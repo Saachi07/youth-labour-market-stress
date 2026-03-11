@@ -4,7 +4,7 @@ data_collection.py
 Downloads four Statistics Canada tables and builds a clean
 province × year panel:  research_data_2015_2024.csv
 
-Source tables (bulk-CSV zips, downloaded and cached on first run):
+Source tables:
 ──────────────────────────────────────────────────────────────────
   14-10-0287-01  LFS monthly, seasonally adjusted
                  pid=1410028701
@@ -111,9 +111,7 @@ YOUTH_AGES_WAGE = ["15 to 24 years"]
 PT_AGE_WEIGHTS = {"15 to 24 years": 0.40, "25 to 44 years": 0.60}
 
 
-# ══════════════════════════════════════════════════════════════════════════════
 # DOWNLOAD + CACHE
-# ══════════════════════════════════════════════════════════════════════════════
 
 def _fetch(key: str, force: bool = False) -> pd.DataFrame:
     """
@@ -175,9 +173,6 @@ def _fetch(key: str, force: bool = False) -> pd.DataFrame:
     return df
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# HELPERS
-# ══════════════════════════════════════════════════════════════════════════════
 
 def _year(series: pd.Series) -> pd.Series:
     """Parse REF_DATE → integer year. Handles 'YYYY-MM' and plain integers."""
@@ -196,11 +191,11 @@ def _find_col(df: pd.DataFrame, *substrings: str) -> str:
     raise KeyError(f"No column matching {substrings} in: {list(df.columns)}")
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ________________________________________________________________________________
 # STEP 1 — LFS  (14-10-0287-01)
 # Unemployment rate, Participation rate, FT/PT employment
 # Monthly → annual mean, 20–24 and 25–29 averaged → 20–29 cohort
-# ══════════════════════════════════════════════════════════════════════════════
+
 
 def process_lfs() -> pd.DataFrame:
     print("\n[1/4]  LFS  14-10-0287-01")
@@ -230,7 +225,6 @@ def process_lfs() -> pd.DataFrame:
     lfs["Year"] = _year(lfs["REF_DATE"])
     lfs = lfs[lfs["Year"].isin(STUDY_YEARS)]
 
-    # Monthly → annual mean, then average the two youth age groups
     annual = (
         lfs.groupby(["Year", "GEO", char_col])["VALUE"]
         .mean().reset_index()
@@ -257,10 +251,10 @@ def process_lfs() -> pd.DataFrame:
     return pivot
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ______________________________________________________________________________
 # STEP 2 — WAGES  (14-10-0064-01)
 # Average hourly wage rate, 20–24 and 25–29 averaged → 20–29 cohort
-# ══════════════════════════════════════════════════════════════════════════════
+
 
 def process_wages() -> pd.DataFrame:
     print("\n[2/4]  Wages  14-10-0064-01")
@@ -313,11 +307,10 @@ def process_wages() -> pd.DataFrame:
     return agg
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+#_____________________________________________________________________________
 # STEP 3 — PART-TIME SHARE  (14-10-0020-01)
 # Coarser age groups; weighted blend 15–24 (40%) + 25–44 (60%)
 # Only used to fill Part_Time_Share gaps from the LFS table
-# ══════════════════════════════════════════════════════════════════════════════
 
 def process_pt_share() -> pd.DataFrame | None:
     print("\n[3/4]  Part-time share  14-10-0020-01  (supplemental)")
@@ -380,10 +373,9 @@ def process_pt_share() -> pd.DataFrame | None:
     return None
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# ________________________________________________________________________________
 # STEP 4 — CPI  (18-10-0004-01)
 # All-items, provincial, monthly → annual mean
-# ══════════════════════════════════════════════════════════════════════════════
 
 def process_cpi() -> pd.DataFrame:
     print("\n[4/4]  CPI  18-10-0004-01")
@@ -408,9 +400,8 @@ def process_cpi() -> pd.DataFrame:
     return agg
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# STEP 5 — MERGE + DERIVE
-# ══════════════════════════════════════════════════════════════════════════════
+# _________________________________________________________________________________
+# STEP 5 — MERGE 
 
 def build_panel(
     lfs:    pd.DataFrame,
@@ -479,10 +470,6 @@ def build_panel(
     print(f"    → {len(df)} rows × {len(df.columns)} columns")
     return df
 
-
-# ══════════════════════════════════════════════════════════════════════════════
-# PUBLIC ENTRY POINT
-# ══════════════════════════════════════════════════════════════════════════════
 
 def build_research_data(
     output_path: str = "research_data_2015_2024.csv",

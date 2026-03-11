@@ -1,18 +1,3 @@
-"""
-main.py
-=======
-Youth Labour Market Stress Dashboard — Canada 2015–2024
-
-On first launch, data_collection.py downloads ~300 MB of StatCan CSVs,
-caches them in ./statcan_cache/, builds research_data_2015_2024.csv (~30 KB),
-and starts the dashboard.  Every subsequent launch reads the small CSV only.
-
-Run:
-    pip install dash dash-bootstrap-components plotly pandas numpy scipy scikit-learn
-    python main.py
-Open:  http://127.0.0.1:8050
-"""
-
 import os
 import warnings
 import numpy as np
@@ -31,9 +16,7 @@ from waitress import serve
 
 warnings.filterwarnings("ignore")
 
-# ══════════════════════════════════════════════════════════════════════════════
 # 1.  DATA LOAD
-# ══════════════════════════════════════════════════════════════════════════════
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _CSV  = os.path.join(_HERE, "research_data_2015_2024.csv")
@@ -102,9 +85,6 @@ _PL = dict(
 )
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# 2.  OLS HELPER
-# ══════════════════════════════════════════════════════════════════════════════
 
 def _ols(data: pd.DataFrame) -> dict:
     """
@@ -142,9 +122,6 @@ def _ols(data: pd.DataFrame) -> dict:
         return {}
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# 3.  LAYOUT ATOMS
-# ══════════════════════════════════════════════════════════════════════════════
 
 def _kpi(title, value, sub="", color=BLUE):
     return dbc.Card(dbc.CardBody([
@@ -175,10 +152,8 @@ def _box(*children):
                            "boxShadow": "0 1px 4px rgba(0,0,0,0.08)"})
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# 4.  APP LAYOUT
-# ══════════════════════════════════════════════════════════════════════════════
 
+# 4.  APP LAYOUT
 app = dash.Dash(
     __name__,
     external_stylesheets=[
@@ -236,7 +211,8 @@ children=[
     # KPI row
     dbc.Row(id="kpi-row", className="mb-3 px-3 g-2"),
 
-    # Row 1 — Trend | Pre/Post scatter
+
+# Row 1 — Trend | Pre/Post scatter
     dbc.Row([
         dbc.Col(_box(
             _sec("Trend Over Time", "Selected indicator by province"),
@@ -249,7 +225,8 @@ children=[
         ), md=4),
     ], className="mb-3 px-3 g-2"),
 
-    # Row 2 — Heatmap | Cluster
+
+# Row 2 — Heatmap | Cluster
     dbc.Row([
         dbc.Col(_box(
             _sec("Stress Index Heatmap",
@@ -263,7 +240,8 @@ children=[
         ), md=5),
     ], className="mb-3 px-3 g-2"),
 
-    # Row 3 — Variance decomp | Coefficient plot
+
+# Row 3 — Variance decomp | Coefficient plot
     dbc.Row([
         dbc.Col(_box(
             _sec("Variance Decomposition",
@@ -277,7 +255,7 @@ children=[
         ), md=7),
     ], className="mb-3 px-3 g-2"),
 
-    # Row 4 — Regression table | Province table
+# Row 4 — Regression table | Province table
     dbc.Row([
         dbc.Col(_box(
             _sec("Interaction Regression", 
@@ -292,7 +270,7 @@ children=[
         ), md=12),
     ], className="mb-4 px-3 g-2"),
 
-    # Footer
+# Footer
     dbc.Row(dbc.Col(html.P(
         "Age: Tables 14-10-0287-01 and 14-10-0064-01 publish '20 to 24 years' and "
         "'25 to 29 years' series, averaged to form the 20–29 cohort. "
@@ -307,9 +285,6 @@ children=[
 ])
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# 5.  MASTER CALLBACK
-# ══════════════════════════════════════════════════════════════════════════════
 
 @app.callback(
     [Output("kpi-row", "children"),
@@ -339,7 +314,8 @@ def update(sel_provs, yr_range, indicator):
         v = s.mean()
         return float(v) if pd.notna(v) else 0.0
 
-    # ── KPIs ─────────────────────────────────────────────────────────────────
+
+# ── KPIs ─────────────────────────────────────────────────────────────────
     pre_s  = sm(pre["Stress_Index"])
     post_s = sm(post["Stress_Index"])
     delta  = ((post_s - pre_s) / abs(pre_s) * 100) if pre_s else 0.0
@@ -364,7 +340,8 @@ def update(sel_provs, yr_range, indicator):
                      GRAY), md=2),
     ], className="g-2")
 
-    # ── 1. Time series ────────────────────────────────────────────────────────
+
+# ── 1. Time series ────────────────────────────────────────────────────────
     fig_ts = px.line(
         filt.sort_values("Year"), x="Year", y=indicator, color="Province",
         markers=True,
@@ -377,7 +354,8 @@ def update(sel_provs, yr_range, indicator):
     fig_ts.update_layout(**_PL)
     fig_ts.update_xaxes(tickformat="d", dtick=1)
 
-    # ── 2. Pre/Post scatter ───────────────────────────────────────────────────
+
+# ── 2. Pre/Post scatter ───────────────────────────────────────────────────
     sc = filt.dropna(subset=["Unemployment_Rate", "Stress_Index"]).copy()
     sc["Period"] = sc["Post2020"].map({0: "Pre-2020", 1: "Post-2020"})
     fig_sc = px.scatter(
@@ -401,8 +379,8 @@ def update(sel_provs, yr_range, indicator):
                 showarrow=False, font_size=10, font_color=color)
     fig_sc.update_layout(**_PL)
 
-    # ── 3. Heatmap ─────────────────────────────────────────────────────────────
-    # Force the pivot table columns (Years) to be strings to prevent numeric scaling
+
+# ── 3. Heatmap ─────────────────────────────────────────────────────────────
     hm = (df[df["Year"].between(y0, y1)]
         .pivot(index="Province_Abbr", columns="Year", values="Stress_Index"))
     hm.columns = [str(int(c)) for c in hm.columns]
@@ -414,7 +392,6 @@ def update(sel_provs, yr_range, indicator):
         template="plotly_white"
     )
 
-    # Fix the axis overcrowding and slant the years
     fig_hm.update_xaxes(
         type='category', 
         tickangle=-45,   
@@ -422,19 +399,16 @@ def update(sel_provs, yr_range, indicator):
         dtick=1         
     )
 
-    # First, apply your global professional layout constants
     fig_hm.update_layout(**_PL)
-
-    # Second, apply the specific fixes for the slanted text and colorbar
     fig_hm.update_layout(
-        margin=dict(l=40, r=20, t=30, b=80), # Increased 'b' for slanted labels
+        margin=dict(l=40, r=20, t=30, b=80),
         coloraxis_colorbar=dict(title="Stress", len=0.7)
     )
-    
-    # Apply the axis slant fix we discussed
+
     fig_hm.update_xaxes(type='category', tickangle=-45)
 
-    # ── 4. Cluster scatter ────────────────────────────────────────────────────
+
+# ── 4. Cluster scatter ────────────────────────────────────────────────────
     cl = filt.dropna(subset=["Unemployment_Rate", "Real_Wage"])
     fig_cl = px.scatter(
         cl, x="Unemployment_Rate", y="Real_Wage",
@@ -446,7 +420,8 @@ def update(sel_provs, yr_range, indicator):
     )
     fig_cl.update_layout(**_PL)
 
-    # ── 5. Variance decomposition ─────────────────────────────────────────────
+
+# ── 5. Variance decomposition ─────────────────────────────────────────────
     vd_rows = []
     for lbl, mask in [("Pre-2020\n(2015–2019)", filt["Post2020"] == 0),
                        ("Post-2020\n(2020–2024)", filt["Post2020"] == 1)]:
@@ -480,7 +455,8 @@ def update(sel_provs, yr_range, indicator):
     else:
         fig_vd = go.Figure().update_layout(**_PL)
 
-    # ── 6. Coefficient plot ───────────────────────────────────────────────────
+
+# ── 6. Coefficient plot ───────────────────────────────────────────────────
     fig_co = go.Figure()
     for lbl, data, color in [
         ("Full period", filt,               NAVY),
@@ -510,7 +486,8 @@ def update(sel_provs, yr_range, indicator):
                           xaxis_title="Coefficient: Unemployment → Stress",
                           yaxis_title="")
 
-    # ── 7. Regression table ───────────────────────────────────────────────────
+
+# ── 7. Regression table ───────────────────────────────────────────────────
     res = _ols(filt)
     if res:
         rows = []
@@ -541,7 +518,8 @@ def update(sel_provs, yr_range, indicator):
         tbl_reg = html.P("Select more provinces / years for regression.",
                           className="text-muted", style={"fontSize": "0.80rem"})
 
-    # ── 8. Province summary table ─────────────────────────────────────────────
+
+# ── 8. Province summary table ─────────────────────────────────────────────
     ps = (
         df[df["Post2020"] == 1]
         .groupby("Province")
@@ -578,10 +556,9 @@ def update(sel_provs, yr_range, indicator):
             fig_vd, fig_co, tbl_reg, tbl_pv)
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# 6.  RUN
-# ══════════════════════════════════════════════════════════════════════════════
-
 if __name__ == "__main__":
-    print("Dashboard serving on http://127.0.0.1:8050")
-    serve(app.server, host="127.0.0.1", port=8050)
+
+    port = int(os.environ.get("PORT", 8050))
+    
+    print(f"🚀 Dashboard starting on port {port}...")
+    serve(app.server, host="0.0.0.0", port=port)
