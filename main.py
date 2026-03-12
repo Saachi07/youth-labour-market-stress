@@ -12,7 +12,6 @@ import dash_bootstrap_components as dbc
 import plotly.express as px
 import plotly.graph_objects as go
 
-from waitress import serve
 
 warnings.filterwarnings("ignore")
 
@@ -154,6 +153,7 @@ def _box(*children):
 
 
 # 4.  APP LAYOUT
+
 app = dash.Dash(
     __name__,
     external_stylesheets=[
@@ -163,6 +163,8 @@ app = dash.Dash(
     suppress_callback_exceptions=True,
     title="Youth Labour Market Stress — Canada",
 )
+
+server = app.server
 
 app.layout = dbc.Container(fluid=True,
     style={"background": PALE, "minHeight": "100vh",
@@ -258,16 +260,15 @@ children=[
 # Row 4 — Regression table | Province table
     dbc.Row([
         dbc.Col(_box(
-            _sec("Interaction Regression", 
+            _sec("Interaction Regression",
                  "Stress ~ Unemp + Post2020 + Unemp×Post2020 + Participation + RealWage"),
             html.Div(id="tbl-reg"),
-        ), md=12, className="mb-3"),
-        
+        ), md=6),
         dbc.Col(_box(
-            _sec("Post-2020 Provincial Summary", 
+            _sec("Post-2020 Provincial Summary",
                  "Averages 2020–2024 — click a column header to sort"),
             html.Div(id="tbl-pv"),
-        ), md=12),
+        ), md=6),
     ], className="mb-4 px-3 g-2"),
 
 # Footer
@@ -382,31 +383,20 @@ def update(sel_provs, yr_range, indicator):
 
 # ── 3. Heatmap ─────────────────────────────────────────────────────────────
     hm = (df[df["Year"].between(y0, y1)]
-        .pivot(index="Province_Abbr", columns="Year", values="Stress_Index"))
-    hm.columns = [str(int(c)) for c in hm.columns]
-
+          .pivot(index="Province_Abbr", columns="Year", values="Stress_Index"))
     fig_hm = px.imshow(
         hm, color_continuous_scale="RdBu_r", color_continuous_midpoint=0,
         aspect="auto", text_auto=".2f",
         labels={"color": "Stress", "x": "Year", "y": ""},
-        template="plotly_white"
     )
-
-    fig_hm.update_xaxes(
-        type='category', 
-        tickangle=-45,   
-        side="bottom",
-        dtick=1         
-    )
-
-    fig_hm.update_layout(**_PL)
-    fig_hm.update_layout(
-        margin=dict(l=40, r=20, t=30, b=80),
-        coloraxis_colorbar=dict(title="Stress", len=0.7)
-    )
-
-    fig_hm.update_xaxes(type='category', tickangle=-45)
-
+    fig_hm.update_traces(textfont_size=9)
+    fig_hm.update_layout(**_PL,
+                          coloraxis_colorbar=dict(title="Stress", len=0.7))
+    fig_hm.update_xaxes(tickformat="d", dtick=1)
+    yr_list = sorted(hm.columns.tolist())
+    if 2020 in yr_list:
+        fig_hm.add_vline(x=yr_list.index(2020) - 0.5,
+                         line_dash="dash", line_color="black", line_width=1.2)
 
 # ── 4. Cluster scatter ────────────────────────────────────────────────────
     cl = filt.dropna(subset=["Unemployment_Rate", "Real_Wage"])
@@ -558,6 +548,4 @@ def update(sel_provs, yr_range, indicator):
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8050))
-    
-    print(f" Dashboard starting on port {port}...")
-    serve(app.server, host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=port, debug=False)
