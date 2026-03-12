@@ -557,8 +557,7 @@ def update(sel_provs, yr_range, indicator):
 
 
 if __name__ == "__main__":
-
     port = int(os.environ.get("PORT", 8050))
     
-    print(f"🚀 Dashboard starting on port {port}...")
+    print(f" Dashboard starting on port {port}...")
     serve(app.server, host="0.0.0.0", port=port)
