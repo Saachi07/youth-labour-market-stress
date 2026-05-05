@@ -2,3 +2,6 @@ statcan_cache/
 __pycache__/
 .env
 *.zip
+data/
+*.pyc
+.streamlit/
